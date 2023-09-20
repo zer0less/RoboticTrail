@@ -5,12 +5,21 @@
 Servo servoMotor;
 int potPin = A0;
 int servoPos = 0;
+int pos = 0;
 float ax, ay, az, gx, gy, gz;
+float axAngle, ayAngle, azAngle, gxAngle, gyAngle, gzAngle;
+float elapseTime, startTime;
+float roll, pitch;
 
 void setup() {
 
   Serial.begin(9600);
   Wire.begin();
+
+  Wire.beginTransmission(0x68);
+  Wire.write(0x6B);
+  Wire.write(0); // Make a reset
+  Wire.endTransmission();
 
   servoMotor.attach(9);
   servoMotor.write(servoPos);
@@ -18,13 +27,48 @@ void setup() {
 }
 
 void loop() {
-  Serial.print("hi\n");
+  startTime = millis();
+  // Accelerator
+  Wire.beginTransmission(0x68);
+  Wire.write(0x3B); // Accelerator Data
+  Wire.endTransmission(false);
   Wire.requestFrom(0x68, 6, true);
-  ax = Wire.read();
-  ay = Wire.read();
-  az = Wire.read();
+  ax = (Wire.read() << 8 | Wire.read()) / 16384.0; // Divide by 16384.0 to get -+2g range
+  ay = (Wire.read() << 8 | Wire.read()) / 16384.0;
+  az = (Wire.read() << 8 | Wire.read()) / 16384.0;
 
-  //int value = analogRead(A4);
+  roll = atan2(-ay, az) * RAD_TO_DEG;
+
+  if (ay > 0) {
+    pitch = atan2(-ax, sqrt(ay * ay + az * az)) * RAD_TO_DEG;
+    servoPos = map(pitch, -90, 90, 0, 180); // Angle from 0 to 180 instead of -90 to 90
+    servoPos = constrain(servoPos, 0, 180);
+  } else if (ay < 0) {
+    pitch = atan2(ax, sqrt(ay * ay + az * az)) * RAD_TO_DEG;
+    servoPos = map(pitch, -90, 90, 0, -180); // Angle from 0 to -180 instead of -90 to 90
+    servoPos = constrain(servoPos, 180, 0);
+  }
+  
+  servoMotor.write(servoPos);
+
+  // Gyroscope
+  /*
+  elapseTime = millis() - firstTime;
+  Wire.beginTransmission(MPU);
+  Wire.write(0x43); // Gyroscope data
+  Wire.endTransmission(false);
+  Wire.requestFrom(0x68, 6, true);
+  gx = (Wire.read() << 8 | Wire.read()) / 131.0; // Divide by 131.0 to get a 250deg/s range
+  gy = (Wire.read() << 8 | Wire.read()) / 131.0; 
+  gz = (Wire.read() << 8 | Wire.read()) / 131.0;
+
+  gxAngle = gx * elapseTime;
+  gyAngle = gy * elapseTime;
+  gzAngle = gz * elapseTime;
+  */
+
+  // Print out
+  Serial.print("New Data: ");
   Serial.print(ax);
   Serial.print(" / ");
   Serial.print(ay);
@@ -45,5 +89,5 @@ void loop() {
   
   // Delay for a short time to avoid rapid servo movements
   */
-  delay(20);
+  delay(100);
 }
