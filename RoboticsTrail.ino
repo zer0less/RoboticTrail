@@ -3,13 +3,9 @@
 
 
 Servo servoMotor;
-int potPin = A0;
-int servoPos = 0;
-int pos = 0;
-float ax, ay, az, gx, gy, gz;
-float axAngle, ayAngle, azAngle, gxAngle, gyAngle, gzAngle;
-float elapseTime, startTime;
-float roll, pitch;
+float ax, ay, az;
+float pitch;
+float angleX, angleY = 0, angleZ;
 
 void setup() {
 
@@ -22,13 +18,12 @@ void setup() {
   Wire.endTransmission();
 
   servoMotor.attach(9);
-  servoMotor.write(servoPos);
-  delay(100);
+  servoMotor.write(0);
+  delay(10);
 }
 
 void loop() {
-  startTime = millis();
-  // Accelerator
+
   Wire.beginTransmission(0x68);
   Wire.write(0x3B); // Accelerator Data
   Wire.endTransmission(false);
@@ -37,24 +32,31 @@ void loop() {
   ay = (Wire.read() << 8 | Wire.read()) / 16384.0;
   az = (Wire.read() << 8 | Wire.read()) / 16384.0;
 
-  roll = atan2(-ay, az) * RAD_TO_DEG;
-
-  if (ay > 0) {
-    pitch = atan2(-ax, sqrt(ay * ay + az * az)) * RAD_TO_DEG;
-    servoPos = map(pitch, -90, 90, 0, 180); // Angle from 0 to 180 instead of -90 to 90
-    servoPos = constrain(servoPos, 0, 180);
-  } else if (ay < 0) {
-    pitch = atan2(ax, sqrt(ay * ay + az * az)) * RAD_TO_DEG;
-    servoPos = map(pitch, -90, 90, 0, -180); // Angle from 0 to -180 instead of -90 to 90
-    servoPos = constrain(servoPos, 180, 0);
+  angleX = atan2(-ay, az) * RAD_TO_DEG;
+  // Quaters are inversed
+  if (ax < 0) { // Q1 & Q2 works
+    pitch = atan2(ax, ay) * RAD_TO_DEG; //sqrt(ay * ay + az * az)
+    angleY = -pitch;
+  } else if (ax > 0) { // 
+    pitch = atan2(ax, ay) * RAD_TO_DEG; //sqrt(ay * ay + az * az)
+    pitch = map(pitch, 0, 180, -180, 0); // Angle from -180 to 0 instead of 0 to 180
+    angleY = - 180 - pitch;
   }
+
+  Serial.print(" New Data: ");
+  Serial.print("X: ");
+  Serial.print(angleX);
+  Serial.print(", Y: ");
+  Serial.print(angleY);
+  Serial.print("\n");
   
-  servoMotor.write(servoPos);
+  servoMotor.write(angleY);
+  
 
   // Gyroscope
   /*
-  elapseTime = millis() - firstTime;
-  Wire.beginTransmission(MPU);
+  elapseTime = millis() - startTime;
+  Wire.beginTransmission(0x68);
   Wire.write(0x43); // Gyroscope data
   Wire.endTransmission(false);
   Wire.requestFrom(0x68, 6, true);
@@ -62,32 +64,10 @@ void loop() {
   gy = (Wire.read() << 8 | Wire.read()) / 131.0; 
   gz = (Wire.read() << 8 | Wire.read()) / 131.0;
 
-  gxAngle = gx * elapseTime;
-  gyAngle = gy * elapseTime;
-  gzAngle = gz * elapseTime;
+  gx = gx * elapseTime;
+  gy = gy * elapseTime;
+  gz = gz * elapseTime;
   */
-
-  // Print out
-  Serial.print("New Data: ");
-  Serial.print(ax);
-  Serial.print(" / ");
-  Serial.print(ay);
-  Serial.print(" / ");
-  Serial.print(az);
-  Serial.print("\n");
   
-  /*
-  // Calculate the servo position based on the tilt angle
-  servoPos = map(value, 0, 1023, 0, 180);
-  
-  // Limit the servo position to prevent extreme angles
-  servoPos = constrain(servoPos, 0, 180);
-  
-  // Set the servo position
-  servoMotor.write(servoPos);
-  Serial.print("Done.\n");
-  
-  // Delay for a short time to avoid rapid servo movements
-  */
-  delay(100);
+  delay(1000);
 }
