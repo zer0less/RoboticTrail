@@ -4,6 +4,7 @@
 
 Servo servoMotor;
 float ax, ay, az;
+float start = 0;
 float pitch;
 float angleX, angleY = 0, angleZ;
 
@@ -13,19 +14,19 @@ void setup() {
   Wire.begin();
 
   Wire.beginTransmission(0x68);
-  Wire.write(0x6B);
+  Wire.write(0x6B); // Go to the mpu
   Wire.write(0); // Make a reset
   Wire.endTransmission();
 
   servoMotor.attach(9);
-  servoMotor.write(0);
+  servoMotor.write(90);
   delay(10);
 }
 
 void loop() {
 
   Wire.beginTransmission(0x68);
-  Wire.write(0x3B); // Accelerator Data
+  Wire.write(0x3B); // Accelerator Data from mpu
   Wire.endTransmission(false);
   Wire.requestFrom(0x68, 6, true);
   ax = (Wire.read() << 8 | Wire.read()) / 16384.0; // Divide by 16384.0 to get -+2g range
@@ -51,23 +52,6 @@ void loop() {
   Serial.print("\n");
   
   servoMotor.write(angleY);
-  
-
-  // Gyroscope
-  /*
-  elapseTime = millis() - startTime;
-  Wire.beginTransmission(0x68);
-  Wire.write(0x43); // Gyroscope data
-  Wire.endTransmission(false);
-  Wire.requestFrom(0x68, 6, true);
-  gx = (Wire.read() << 8 | Wire.read()) / 131.0; // Divide by 131.0 to get a 250deg/s range
-  gy = (Wire.read() << 8 | Wire.read()) / 131.0; 
-  gz = (Wire.read() << 8 | Wire.read()) / 131.0;
-
-  gx = gx * elapseTime;
-  gy = gy * elapseTime;
-  gz = gz * elapseTime;
-  */
   
   delay(1000);
 }
